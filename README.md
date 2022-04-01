@@ -1,14 +1,15 @@
 
 [![Runboat](https://img.shields.io/badge/runboat-Try%20me-875A7B.png)](https://runboat.odoo-community.org/builds?repo=OCA/connector-interfaces&target_branch=14.0)
-[![Build Status](https://travis-ci.com/OCA/connector-interfaces.svg?branch=14.0)](https://travis-ci.com/OCA/connector-interfaces)
+[![Pre-commit Status](https://github.com/OCA/connector-interfaces/actions/workflows/pre-commit.yml/badge.svg?branch=14.0)](https://github.com/OCA/connector-interfaces/actions/workflows/pre-commit.yml?query=branch%3A14.0)
+[![Build Status](https://github.com/OCA/connector-interfaces/actions/workflows/test.yml/badge.svg?branch=14.0)](https://github.com/OCA/connector-interfaces/actions/workflows/test.yml?query=branch%3A14.0)
 [![codecov](https://codecov.io/gh/OCA/connector-interfaces/branch/14.0/graph/badge.svg)](https://codecov.io/gh/OCA/connector-interfaces)
 [![Translation Status](https://translation.odoo-community.org/widgets/connector-interfaces-14-0/-/svg-badge.svg)](https://translation.odoo-community.org/engage/connector-interfaces-14-0/?utm_source=widget)
 
 <!-- /!\ do not modify above this line -->
 
-# connector-interfaces
+# Odoo connector interfaces
 
-TODO: add repo description.
+Additionl tools for connecting external services and manage import/export of data
 
 <!-- /!\ do not modify below this line -->
 
