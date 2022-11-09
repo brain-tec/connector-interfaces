@@ -10,6 +10,7 @@ from odoo import fields
 from odoo.tools.misc import str2bool
 
 from ..log import logger
+from ..utils.misc import sanitize_external_id
 
 FMTS = ("%d/%m/%Y",)
 
@@ -97,6 +98,8 @@ def convert(field, conv_type, fallback_field=None, pre_value_handler=None, **kw)
     Use ``fallback_field`` to provide a field of the same type
     to be used in case the base field has no value.
     """
+    convert._from_key = field
+
     if conv_type in CONV_MAPPING:
         conv_type = CONV_MAPPING[conv_type]
 
@@ -120,6 +123,7 @@ def convert(field, conv_type, fallback_field=None, pre_value_handler=None, **kw)
 
 def from_mapping(field, mapping, default_value=None):
     """Convert the source value using a ``mapping`` of values."""
+    from_mapping._from_key = field
 
     def modifier(self, record, to_attr):
         value = record.get(field)
@@ -130,6 +134,7 @@ def from_mapping(field, mapping, default_value=None):
 
 def concat(field, separator=" ", handler=None):
     """Concatenate values from different fields."""
+    concat._from_key = field
 
     # TODO: `field` is actually a list of fields.
     # `field` attribute is required ATM by the base connector mapper and
@@ -145,25 +150,41 @@ def concat(field, separator=" ", handler=None):
     return modifier
 
 
-def xmlid_to_rel(field):
+def xmlid_to_rel(field, sanitize=True, sanitize_default_mod_name=None):
     """Convert xmlids source values to ids."""
+    xmlid_to_rel._from_key = field
+    xmlid_to_rel._sanitize = sanitize
+    xmlid_to_rel._sanitize_default_mod_name = sanitize_default_mod_name
+
+    def _xid_to_record(env, xid):
+        xid = (
+            sanitize_external_id(
+                xid, default_mod_name=xmlid_to_rel._sanitize_default_mod_name
+            )
+            if xmlid_to_rel._sanitize
+            else xid
+        )
+        return env.ref(xid, raise_if_not_found=False)
 
     def modifier(self, record, to_attr):
         value = record.get(field)
         if value is None:
             return None
+        if isinstance(value, str) and "," in value:
+            value = [x.strip() for x in value.split(",") if x.strip()]
         if isinstance(value, str):
             # m2o
-            rec = self.env.ref(value, raise_if_not_found=False)
+            rec = _xid_to_record(self.env, value)
             if rec:
                 return rec.id
             return None
         # x2m
-        return [
-            (6, 0, self.env.ref(x).ids)
-            for x in value
-            if self.env.ref(x, raise_if_not_found=False)
-        ]
+        values = []
+        for xid in value:
+            rec = _xid_to_record(self.env, xid)
+            if rec:
+                values.append((6, 0, rec.ids))
+        return values
 
     return modifier
 
@@ -210,6 +231,7 @@ def backend_to_rel(  # noqa: C901
     :param create_missing_handler: provide an handler
         for getting new values for a new record to be created.
     """
+    backend_to_rel._from_key = field
 
     def modifier(self, record, to_attr):
         search_value = record.get(field)
@@ -217,15 +239,25 @@ def backend_to_rel(  # noqa: C901
         if search_value and value_handler:
             search_value = value_handler(self, record, search_value)
 
+        # get the real column and the model
+        column = self.model._fields[to_attr]
+        rel_model = self.env[column.comodel_name].with_context(active_test=False)
+
         # handle defaults if no search value here
         if not search_value and default_search_value:
             search_value = default_search_value
             if default_search_field:
                 modifier.search_field = default_search_field
 
-        # get the real column and the model
-        column = self.model._fields[to_attr]
-        rel_model = self.env[column.comodel_name].with_context(active_test=False)
+        # Support Odoo studio fields dynamically.
+        # When a model is created automatically from Odoo studio
+        # it gets an `x_name` field which cannot be modified :/
+        if (
+            not default_search_field
+            and modifier.search_field not in rel_model._fields
+            and "x_name" in rel_model._fields
+        ):
+            modifier.search_field = "x_name"
 
         if allowed_length and len(search_value) != allowed_length:
             return None
