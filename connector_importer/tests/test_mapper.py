@@ -61,6 +61,14 @@ class TestRecordsetImporter(TestImporterBase):
             "ref": "12345",
         }
         self.assertEqual(mapper._clean_record(rec), expected)
+        # Blacklist
+        mapper = self._get_dynamyc_mapper(options=dict(source_key_blacklist=["ref"]))
+        expected = {
+            "name": "John Doe",
+            "some_one": 1,
+            "some_two": 2,
+        }
+        self.assertEqual(mapper._clean_record(rec), expected)
         # Prefix
         mapper = self._get_dynamyc_mapper(options=dict(source_key_prefix="some_"))
         expected = {
@@ -97,18 +105,21 @@ class TestRecordsetImporter(TestImporterBase):
         expected = rec.copy()
         self.assertEqual(mapper.dynamic_fields(rec), expected)
         mapper = self._get_dynamyc_mapper()
-        cat = self.env.ref("base.res_partner_category_0")
+        categs = self.env.ref("base.res_partner_category_0") + self.env.ref(
+            "base.res_partner_category_2"
+        )
         rec = {
             "name": "John Doe",
             "ref": "12345",
             "xid::parent_id": "base.res_partner_10",
-            "category_id": cat.name,
+            "xid::category_id": "base.res_partner_category_0,base.res_partner_category_2",
+            "title_id": "Doctor",
         }
         expected = {
             "name": "John Doe",
             "ref": "12345",
             "parent_id": self.env.ref("base.res_partner_10").id,
-            "category_id": [(6, 0, cat.ids)],
+            "category_id": [(6, 0, categs.ids)],
         }
         self.assertEqual(mapper.dynamic_fields(rec), expected)
 
